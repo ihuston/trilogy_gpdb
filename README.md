@@ -204,3 +204,93 @@ You should see the test fail with our test description included in the output.
 FAILED
 Total: 1, Passed: 0, Failed: 1
 ```
+
+## Testing a data science project
+For real world use cases you need to go beyond testing a single SQL statement
+inside a specific test file. Trilogy allows you to test a whole project,
+with overall database schema and test setup and teardown scripts.
+
+The instructions in the Trilogy README explain how a project should be laid out,
+and the repo accompanying this post has an example of one for a Greenplum database.
+With this set up your test script can specify when to execute setup and
+teardown scripts and you can test user defined functions that you have added
+to your database.
+
+Consider the following function that we want to add to a customer transactions
+database to check the consistency of the customer balance:
+```
+CREATE OR REPLACE FUNCTION VALIDATE_BALANCE(
+  V_CLIENT_ID INT) RETURNS BOOL AS $$
+DECLARE
+  IS_VALID BOOLEAN;
+BEGIN
+  SELECT CASE C.BALANCE - COALESCE(SUM(T.VALUE), '0') WHEN '0' THEN TRUE ELSE FALSE END INTO IS_VALID
+    FROM CLIENTS C LEFT JOIN TRANSACTIONS T ON T.ID_CLIENT=C.ID WHERE C.ID=V_CLIENT_ID GROUP BY C.ID, C.BALANCE;
+  RETURN IS_VALID;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+To test this function in an isolated testing database we need to
+- Create a `clients` table and a `transactions` table. This happens in `schema.sql`.
+- Insert some client test data before we run any tests.
+- Insert specific transactions and balance before each test.
+- Run our test.
+- After each test, remove the transactions and balances as needed to create a clean environment for the next test.
+- After all the tests are complete, remove the clients we have added.
+
+We can specify when to run each setup and teardown script inside our test
+specification file `generic_testcase.stt`:
+```
+# TEST CASE
+Generic test case example
+## BEFORE ALL
+- Setup client
+## BEFORE EACH TEST
+- Set client balance
+## AFTER EACH TEST
+- Remove transactions
+## AFTER ALL
+- Remove clients
+## TEST
+This test should fail
+\`\`\`
+SELECT
+  CASE WHEN (1 <> 2) THEN
+    fail() -- This should never have happened
+  END
+FROM clients where ID=66778899
+;
+\`\`\`
+## TEST
+This test should pass
+\`\`\`
+SELECT
+    CASE WHEN VALIDATE_BALANCE(66778899) THEN pass()
+    ELSE fail() END;
+\`\`\`
+## TEST
+And this test should pass
+\`\`\`
+SELECT 1;
+\`\`\`
+
+```
+
+The lines
+```
+## BEFORE EACH TEST
+- Set client balance
+```
+state that we should run the client balance setup script before each test invocation.
+The name of this script is determined from the second line and could be
+`set_client_balance.sql`, `setclientbalance.sql` or similar.
+
+As your data science SQL code grows, this project structure allows you to flexibly
+add schemas and fixture scripts as needed.
+
+## Summary
+In my opinion Trilogy is an interesting new testing framework for SQL databases that
+solves some of the issues with other frameworks. Having shown how it can work with
+Greenplum databases I'm looking forward to making use of it in a future
+client project!

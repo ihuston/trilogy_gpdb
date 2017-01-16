@@ -1,0 +1,32 @@
+# TEST CASE
+Generic test case example
+## BEFORE ALL
+- Setup client
+## BEFORE EACH TEST
+- Set client balance
+## AFTER EACH TEST
+- Remove transactions
+## AFTER ALL
+- Remove clients
+## TEST
+This test should fail
+```
+SELECT
+  CASE WHEN (1 <> 2) THEN
+    fail() -- This should never have happened
+  END
+FROM clients where ID=66778899
+;
+```
+## TEST
+This test should pass
+```
+SELECT
+    CASE WHEN VALIDATE_BALANCE(66778899) THEN pass()
+    ELSE fail() END;
+```
+## TEST
+And this test should pass
+```
+SELECT 1;
+```
