@@ -46,20 +46,19 @@ Greenplum (and vice versa of course).
 In particular for the Trilogy testing framework, the easiest way to write tests
 is to run an anonymous code block and raise an exception if the test fails.
 In the Markdown structure that Trilogy uses this would look like:
-````
-# TEST CASE
-A simple test of multiplication
-## TEST
-This is the test
-```
-DO $$
-BEGIN
-    SELECT CASE WHEN 2*3=6 THEN NULL
-    ELSE RAISE EXCEPTION 'Failed to multiple!';
-END
-$$;
-```
-````
+
+    # TEST CASE
+    A simple test of multiplication
+    ## TEST
+    This is the test
+    ```
+    DO $$
+    BEGIN
+        SELECT CASE WHEN 2*3=6 THEN NULL
+        ELSE RAISE EXCEPTION 'Failed to multiple!';
+    END
+    $$;
+    ```
 
 Unfortunately the `DO` statement was added to PostgreSQL in version 9.0 and
 is not available in Greenplum. In this post I am going to describe how you can
@@ -109,15 +108,14 @@ CREATE database testing;
 
 ## Our first test
 Create a file called `simple.stt` as a simple first test:
-````
-# TEST CASE
-Our first test
-## TEST
-This is the test
-```
-SELECT 1;
-```
-````
+
+    # TEST CASE
+    Our first test
+    ## TEST
+    This is the test
+    ```
+    SELECT 1;
+    ```
 
 Run this test using Trilogy:
 ```
@@ -179,15 +177,15 @@ SELECT fail();
 You should see `ERROR:  FAIL` as the response.
 
 We're now ready to create a failing test in `failing.stt`:
-````
-# TEST CASE
-A failing test
-## TEST
-This test should fail
-```
-SELECT CASE WHEN 2*3=7 THEN pass() ELSE fail() END;
-```
-````
+
+    # TEST CASE
+    A failing test
+    ## TEST
+    This test should fail
+    ```
+    SELECT CASE WHEN 2*3=7 THEN pass() ELSE fail() END;
+    ```
+
 
 You can run this test using Trilogy as before:
 ```
@@ -238,41 +236,39 @@ To test this function in an isolated testing database we need to
 
 We can specify when to run each setup and teardown script inside our test
 specification file `generic_testcase.stt`:
-````
-# TEST CASE
-Generic test case example
-## BEFORE ALL
-- Setup client
-## BEFORE EACH TEST
-- Set client balance
-## AFTER EACH TEST
-- Remove transactions
-## AFTER ALL
-- Remove clients
-## TEST
-This test should fail
-```
-SELECT
-  CASE WHEN (1 <> 2) THEN
-    fail() -- This should never have happened
-  END
-FROM clients where ID=66778899
-;
-```
-## TEST
-This test should pass
-```
-SELECT
-    CASE WHEN VALIDATE_BALANCE(66778899) THEN pass()
-    ELSE fail() END;
-```
-## TEST
-And this test should pass
-```
-SELECT 1;
-```
 
-````
+    # TEST CASE
+    Generic test case example
+    ## BEFORE ALL
+    - Setup client
+    ## BEFORE EACH TEST
+    - Set client balance
+    ## AFTER EACH TEST
+    - Remove transactions
+    ## AFTER ALL
+    - Remove clients
+    ## TEST
+    This test should fail
+    ```
+    SELECT
+      CASE WHEN (1 <> 2) THEN
+        fail() -- This should never have happened
+      END
+    FROM clients where ID=66778899
+    ;
+    ```
+    ## TEST
+    This test should pass
+    ```
+    SELECT
+        CASE WHEN VALIDATE_BALANCE(66778899) THEN pass()
+        ELSE fail() END;
+    ```
+    ## TEST
+    And this test should pass
+    ```
+    SELECT 1;
+    ```
 
 The lines
 ```
