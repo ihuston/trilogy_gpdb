@@ -1,6 +1,6 @@
 # Trilogy and Greenplum
 
-Today I'm going to show you how you can use a new SQL testing framework called
+See how you can use a new SQL testing framework called
 [Trilogy](https://github.com/PivotalSharedIreland/trilogy)
 with the open source [Greenplum Database](http://greenplum.org/) to help you
 [test drive](http://engineering.pivotal.io/post/test-driven-development-for-data-science/)
