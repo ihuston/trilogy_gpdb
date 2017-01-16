@@ -1,0 +1,7 @@
+# TEST CASE
+A failing test
+## TEST
+This test should fail
+```
+SELECT CASE WHEN 2*3=7 THEN pass() ELSE fail() END;
+```
