@@ -1,16 +1,14 @@
 # Trilogy and Greenplum for Data Science TDD
-
-In this post we will see how you can use a new SQL testing framework called
-[Trilogy](https://github.com/PivotalSharedIreland/trilogy)
-with the open source [Greenplum Database](http://greenplum.org/) to help you
+In this post I show how to use
+[Trilogy](https://github.com/PivotalSharedIreland/trilogy), a new testing framework for SQL databases,
+with the open source [Greenplum Database](http://greenplum.org/). The goal is to help you
 [test drive](http://engineering.pivotal.io/post/test-driven-development-for-data-science/)
-your data science code. The accompanying code is [available on Github](https://github.com/ihuston/trilogy_gpdb).
+your data science SQL code. The accompanying code is [available on Github](https://github.com/ihuston/trilogy_gpdb).
 
 ## Background
 As a data scientist at Pivotal I write a lot of SQL and I write a lot of tests.
 Doing both at the same time has always been a bit difficult. Some SQL databases
-have testing frameworks like PGTap or Oracle SQL Developer tool, but these
-are rarely easy to set up and work with on a real system.
+have testing frameworks like [PGTap](http://pgtap.org/) or [Oracle SQL Developer](http://docs.oracle.com/cd/E15846_01/doc.21/e15222/unit_testing.htm#RPTUG45000), but these are rarely easy to set up and work with on a real system.
 
 In the past I have leveraged other programming languages like Python, R or even Bash
 to run simple SQL test suites and make them part of our CI pipeline.
@@ -18,8 +16,8 @@ I would spend some time at the start of each project getting this setup working
 but it would always be somewhat hard-coded for the project at hand,
 and be difficult for new team members to understand without a lot of effort.
 
-My colleagues Konstantin and Cassio faced a similar problem recently and decided to do something about it,
-by [building a generic testing framework](http://engineering.pivotal.io/post/oracle-sql-tdd/) for databases called [Trilogy](https://github.com/PivotalSharedIreland/trilogy).
+My colleagues Konstantin and Cassio faced a [similar problem recently](http://engineering.pivotal.io/post/oracle-sql-tdd/) and decided to do something about it,
+by building a generic testing framework for SQL databases called [Trilogy](https://github.com/PivotalSharedIreland/trilogy).
 
 Trilogy is written in Java, but can be used simply from the command line, and
 can connect to any database with a JDBC driver (which is pretty much all of them).
@@ -66,28 +64,32 @@ still use Trilogy with Greenplum without needing `DO`.
 
 
 ## Installing Greenplum
+
 - Clone the repo including Docker file from https://github.com/dbbaskette/gpdb-docker.
 - Follow the instructions to download Greenplum from the Pivotal website.
-- Build the docker image using
+- Build the docker image with the following command, replacing `tag` with a suitable name:
+
 ```
 docker build -t [tag] .
 ```
-where tag is how you will refer to the build (e.g. 'gpdb').
 
 - Start the Greenplum server using
+
 ```
 docker run -i -p 5432:5432 [tag]
 ```
 - Check the server is running using `psql`. The password for `gpadmin` is `pivotal`:
+
 ```
 psql -U gpadmin -h localhost -p 5432
 ```
 - Run the following SQL query to see the version of Greenplum:
+
 ```
 SELECT version();
 ```
 If everything has worked you should see something like:
-```
+```no-highlight
  PostgreSQL 8.2.15 (Greenplum Database 4.3.7.1 build 1) on x86_64-unknown-linux-gnu, compiled by GCC gcc (GCC) 4.4.2 compiled on Jan 21 2016 15:51:02
 (1 row)
 ```
@@ -120,7 +122,7 @@ Create a file called `simple.stt` as a simple first test:
 This file is available in the [accompanying repo](https://github.com/ihuston/trilogy_gpdb) in the `tests` folder.
 
 Run this test using Trilogy:
-```
+```no-highlight
 java -jar trilogy.jar --db_url=jdbc:postgresql://localhost:5432/testing --db_user=gpadmin --db_password=pivotal ./simple.stt
 ```
 You can also specify the database parameters in environmental variables:
@@ -135,7 +137,7 @@ The [PostgreSQL JDBC driver](https://jdbc.postgresql.org/) needs to be available
 On macOS you can add the driver JAR to `~/Library/Java/Extensions` to make it available
 to all Java programs.
 If you need to provide the PostgreSQL JDBC driver using a Classpath then the entry point for the Java application changes:
-```
+```no-highlight
 java -classpath /PATH/TO/JDBC/DRIVER/postgresql-9.4.1212.jar:/PATH/TO/TRILOGY/trilogy.jar org.springframework.boot.loader.JarLauncher ./simple.stt
 ```
 
@@ -206,14 +208,14 @@ java -jar trilogy.jar ./tests/failing.stt
 ```
 
 You should see the test fail with our test description included in the output.
-```
+```no-highlight
 [FAIL] A failing test - This test should fail:
-    StatementCallback; uncategorized SQLException for SQL [SELECT CASE WHEN 2*3=7 THEN pass() ELSE fail('Multiplication failed.') END]; SQL state [P0001]; error code [0]; ERROR: FAILED: Failed to multiply; nested exception is org.postgresql.util.PSQLException: ERROR: FAILED: Failed to multiply
+    StatementCallback; uncategorized SQLException for SQL [SELECT CASE WHEN 2*3=7 THEN pass() ELSE fail('Failed to multiply') END]; SQL state [P0001]; error code [0]; ERROR: FAILED: Failed to multiply; nested exception is org.postgresql.util.PSQLException: ERROR: FAILED: Failed to multiply
 FAILED
 Total: 1, Passed: 0, Failed: 1
 ```
 
-## Testing a data science project
+## Testing a whole project
 For real world use cases you need to go beyond testing a single SQL statement
 inside a specific test file. Trilogy allows you to test a whole project,
 with overall database schema and test setup and teardown scripts.
@@ -240,6 +242,7 @@ $$ LANGUAGE plpgsql;
 ```
 
 To test this function in an isolated testing database we need to
+
 - Create a `clients` table and a `transactions` table. This happens in `schema.sql`.
 - Insert some client test data before we run any tests.
 - Insert specific transactions and balance before each test.
@@ -284,7 +287,7 @@ specification file `generic_testcase.stt`:
     ```
 
 The lines
-```
+```no-highlight
 ## BEFORE EACH TEST
 - Set client balance
 ```
@@ -293,7 +296,7 @@ The name of this script is determined from the second line and could be
 `set_client_balance.sql`, `setclientbalance.sql` or similar.
 
 Trilogy can run a project like `gpdb_generic` in the [accompanying repo](https://github.com/ihuston/trilogy_gpdb) using `--project`:
-```
+```no-highlight
 java -jar trilogy.jar --project tests/gpdb_generic
 ```
 
