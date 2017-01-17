@@ -1,10 +1,10 @@
-# Trilogy and Greenplum
+# Trilogy and Greenplum for Data Science TDD
 
-See how you can use a new SQL testing framework called
+In this post we will see how you can use a new SQL testing framework called
 [Trilogy](https://github.com/PivotalSharedIreland/trilogy)
 with the open source [Greenplum Database](http://greenplum.org/) to help you
 [test drive](http://engineering.pivotal.io/post/test-driven-development-for-data-science/)
-your data science code.
+your data science code. The accompanying code is [available on Github](https://github.com/ihuston/trilogy_gpdb).
 
 ## Background
 As a data scientist at Pivotal I write a lot of SQL and I write a lot of tests.
@@ -55,7 +55,7 @@ In the Markdown structure that Trilogy uses this would look like:
     DO $$
     BEGIN
         SELECT CASE WHEN 2*3=6 THEN NULL
-        ELSE RAISE EXCEPTION 'Failed to multiple!';
+        ELSE RAISE EXCEPTION 'Failed to multiply!';
     END
     $$;
     ```
@@ -117,13 +117,26 @@ Create a file called `simple.stt` as a simple first test:
     SELECT 1;
     ```
 
+This file is available in the [accompanying repo](https://github.com/ihuston/trilogy_gpdb) in the `tests` folder.
+
 Run this test using Trilogy:
 ```
 java -jar trilogy.jar --db_url=jdbc:postgresql://localhost:5432/testing --db_user=gpadmin --db_password=pivotal ./simple.stt
 ```
+You can also specify the database parameters in environmental variables:
+```
+export DB_URL='jdbc:postgresql://localhost:5432/testing'
+export DB_USER=gpadmin
+export DB_PASSWORD=pivotal
+
+java -jar trilogy.jar ./simple.stt
+```
+The [PostgreSQL JDBC driver](https://jdbc.postgresql.org/) needs to be available to connect to Greenplum.
+On macOS you can add the driver JAR to `~/Library/Java/Extensions` to make it available
+to all Java programs.
 If you need to provide the PostgreSQL JDBC driver using a Classpath then the entry point for the Java application changes:
 ```
-java -classpath /PATH/TO/JDBC/DRIVER/postgresql-9.4.1212.jar:/PATH/TO/TRILOGY/trilogy.jar org.springframework.boot.loader.JarLauncher --db_url=jdbc:postgresql://localhost:5432/testing --db_user=gpadmin --db_password=pivotal ./simple.stt
+java -classpath /PATH/TO/JDBC/DRIVER/postgresql-9.4.1212.jar:/PATH/TO/TRILOGY/trilogy.jar org.springframework.boot.loader.JarLauncher ./simple.stt
 ```
 
 You should see the Trilogy logo and a successful result:
@@ -143,7 +156,7 @@ which makes writing these tests very efficient:
 DO $$
 BEGIN
     SELECT CASE WHEN 2*3=6 THEN NULL
-    ELSE RAISE EXCEPTION 'Failed to multiple!';
+    ELSE RAISE EXCEPTION 'Failed to multiply!';
 END
 $$;
 ```
@@ -153,11 +166,11 @@ Unfortunately Greenplum does not include the `DO` command so we need to allow so
 One way to do this is to create two void functions, `pass()` and `fail()`, and call these
 as needed inside our tests. To create these functions run the following inside `psql`:
 ```
-CREATE OR REPLACE FUNCTION fail()
+CREATE OR REPLACE FUNCTION fail(msg text)
 RETURNS VOID AS
 $$
 BEGIN
-RAISE EXCEPTION 'FAIL';
+RAISE EXCEPTION 'FAILED: %', msg;
 END;
 $$ language plpgsql;
 
@@ -172,9 +185,9 @@ $$ language plpgsql;
 
 You can see how this works by trying the following statement in `psql`:
 ```
-SELECT fail();
+SELECT fail('This test failed!');
 ```
-You should see `ERROR:  FAIL` as the response.
+You should see `ERROR:  FAILED: This test failed!` as the response.
 
 We're now ready to create a failing test in `failing.stt`:
 
@@ -183,19 +196,19 @@ We're now ready to create a failing test in `failing.stt`:
     ## TEST
     This test should fail
     ```
-    SELECT CASE WHEN 2*3=7 THEN pass() ELSE fail() END;
+    SELECT CASE WHEN 2*3=7 THEN pass() ELSE fail('Failed to multiply') END;
     ```
-
+This file is also available in the [accompanying repo](https://github.com/ihuston/trilogy_gpdb) in the `tests` folder.
 
 You can run this test using Trilogy as before:
 ```
-java -jar trilogy.jar --db_url=jdbc:postgresql://localhost:5432/testing --db_user=gpadmin --db_password=pivotal ./failing.stt
+java -jar trilogy.jar ./tests/failing.stt
 ```
 
 You should see the test fail with our test description included in the output.
 ```
 [FAIL] A failing test - This test should fail:
-    StatementCallback; uncategorized SQLException for SQL [SELECT CASE WHEN 2*3=7 THEN pass() ELSE fail() END]; SQL state [P0001]; error code [0]; ERROR: FAIL; nested exception is org.postgresql.util.PSQLException: ERROR: FAIL
+    StatementCallback; uncategorized SQLException for SQL [SELECT CASE WHEN 2*3=7 THEN pass() ELSE fail('Multiplication failed.') END]; SQL state [P0001]; error code [0]; ERROR: FAILED: Failed to multiply; nested exception is org.postgresql.util.PSQLException: ERROR: FAILED: Failed to multiply
 FAILED
 Total: 1, Passed: 0, Failed: 1
 ```
@@ -252,7 +265,7 @@ specification file `generic_testcase.stt`:
     ```
     SELECT
       CASE WHEN (1 <> 2) THEN
-        fail() -- This should never have happened
+        fail('This should not have happened.')
       END
     FROM clients where ID=66778899
     ;
@@ -262,7 +275,7 @@ specification file `generic_testcase.stt`:
     ```
     SELECT
         CASE WHEN VALIDATE_BALANCE(66778899) THEN pass()
-        ELSE fail() END;
+        ELSE fail('Balance not valid.') END;
     ```
     ## TEST
     And this test should pass
@@ -278,6 +291,11 @@ The lines
 state that we should run the client balance setup script before each test invocation.
 The name of this script is determined from the second line and could be
 `set_client_balance.sql`, `setclientbalance.sql` or similar.
+
+Trilogy can run a project like `gpdb_generic` in the [accompanying repo](https://github.com/ihuston/trilogy_gpdb) using `--project`:
+```
+java -jar trilogy.jar --project tests/gpdb_generic
+```
 
 As your data science SQL code grows, this project structure allows you to flexibly
 add schemas and fixture scripts as needed.

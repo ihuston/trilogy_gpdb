@@ -13,7 +13,7 @@ This test should fail
 ```
 SELECT
   CASE WHEN (1 <> 2) THEN
-    fail() -- This should never have happened
+    fail('This should not have happened.')
   END
 FROM clients where ID=66778899
 ;
@@ -23,7 +23,7 @@ This test should pass
 ```
 SELECT
     CASE WHEN VALIDATE_BALANCE(66778899) THEN pass()
-    ELSE fail() END;
+    ELSE fail('Balance not valid.') END;
 ```
 ## TEST
 And this test should pass
